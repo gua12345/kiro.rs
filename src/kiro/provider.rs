@@ -253,7 +253,17 @@ impl KiroProvider {
                 body
             );
 
-            let has_available = self.token_manager.report_failure(ctx.id);
+            // 检查是否为 MODEL_TEMPORARILY_UNAVAILABLE 错误
+            // 这种错误是上游负载高导致的临时不可用，不应计入凭据失败次数
+            let is_model_unavailable = body.contains("MODEL_TEMPORARILY_UNAVAILABLE");
+
+            let has_available = if is_model_unavailable {
+                // MODEL_TEMPORARILY_UNAVAILABLE 不计入凭据失败，直接重试
+                true
+            } else {
+                // 其他错误计入凭据失败次数
+                self.token_manager.report_failure(ctx.id)
+            };
             if !has_available {
                 let api_type = if is_stream { "流式" } else { "非流式" };
                 anyhow::bail!(

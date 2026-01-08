@@ -8,7 +8,7 @@ use axum::{
 
 use super::{
     middleware::AdminState,
-    types::{AddCredentialRequest, SetDisabledRequest, SetPriorityRequest, SuccessResponse},
+    types::{AddCredentialRequest, BatchImportRequest, SetDisabledRequest, SetPriorityRequest, SuccessResponse},
 };
 
 /// GET /api/admin/credentials
@@ -89,4 +89,14 @@ pub async fn add_credential(
         Ok(response) => Json(response).into_response(),
         Err(e) => (e.status_code(), Json(e.into_response())).into_response(),
     }
+}
+
+/// POST /api/admin/credentials/batch
+/// 批量导入凭据
+pub async fn batch_import_credentials(
+    State(state): State<AdminState>,
+    Json(payload): Json<BatchImportRequest>,
+) -> impl IntoResponse {
+    let response = state.service.batch_import(payload).await;
+    Json(response)
 }

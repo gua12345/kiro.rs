@@ -7,8 +7,8 @@ use crate::kiro::token_manager::MultiTokenManager;
 
 use super::error::AdminServiceError;
 use super::types::{
-    AddCredentialRequest, AddCredentialResponse, BalanceResponse, CredentialStatusItem,
-    CredentialsStatusResponse,
+    AddCredentialRequest, AddCredentialResponse, BalanceResponse, BatchImportRequest,
+    BatchImportResponse, CredentialStatusItem, CredentialsStatusResponse, ImportResult,
 };
 
 /// Admin 服务
@@ -142,6 +142,98 @@ impl AdminService {
             message: format!("凭据添加成功，ID: {}", credential_id),
             credential_id,
         })
+    }
+
+    /// 批量导入凭据
+    pub async fn batch_import(&self, req: BatchImportRequest) -> BatchImportResponse {
+        let mut results = Vec::new();
+        let mut imported_count = 0;
+        let mut skipped_count = 0;
+        let mut failed_count = 0;
+
+        for account in req.accounts {
+            // 获取账户标识符（用于显示）
+            let identifier = account
+                .email
+                .clone()
+                .or_else(|| account.nickname.clone())
+                .unwrap_or_else(|| "未知账户".to_string());
+
+            // 检查 refresh_token 是否存在
+            let refresh_token = match &account.credentials.refresh_token {
+                Some(token) if !token.is_empty() => token.clone(),
+                _ => {
+                    results.push(ImportResult {
+                        identifier,
+                        success: false,
+                        message: "缺少 refresh_token".to_string(),
+                        credential_id: None,
+                    });
+                    skipped_count += 1;
+                    continue;
+                }
+            };
+
+            // 确定认证方式
+            let auth_method = match account.credentials.auth_method.as_deref() {
+                Some("social") => "social".to_string(),
+                Some("IdC") => "idc".to_string(),
+                // 根据 idp 推断
+                _ => match account.idp.as_deref() {
+                    Some("BuilderId") => "idc".to_string(),
+                    _ => "social".to_string(),
+                },
+            };
+
+            // 构建凭据对象
+            let new_cred = KiroCredentials {
+                id: None,
+                access_token: None,
+                refresh_token: Some(refresh_token),
+                profile_arn: None,
+                expires_at: None,
+                auth_method: Some(auth_method),
+                client_id: account.credentials.client_id.clone().filter(|s| !s.is_empty()),
+                client_secret: account.credentials.client_secret.clone().filter(|s| !s.is_empty()),
+                priority: 0,
+            };
+
+            // 尝试添加凭据
+            match self.token_manager.add_credential(new_cred).await {
+                Ok(credential_id) => {
+                    results.push(ImportResult {
+                        identifier,
+                        success: true,
+                        message: format!("导入成功，ID: {}", credential_id),
+                        credential_id: Some(credential_id),
+                    });
+                    imported_count += 1;
+                }
+                Err(e) => {
+                    results.push(ImportResult {
+                        identifier,
+                        success: false,
+                        message: format!("导入失败: {}", e),
+                        credential_id: None,
+                    });
+                    failed_count += 1;
+                }
+            }
+        }
+
+        let message = format!(
+            "批量导入完成：成功 {} 个，跳过 {} 个，失败 {} 个",
+            imported_count, skipped_count, failed_count
+        );
+
+        BatchImportResponse {
+            success: failed_count == 0 && skipped_count == 0,
+            message,
+            imported_count,
+            skipped_count,
+            failed_count,
+            results,
+        }
     }
 
     /// 分类简单操作错误（set_disabled, set_priority, reset_and_enable）

@@ -94,6 +94,144 @@ pub struct AddCredentialResponse {
     pub credential_id: u64,
 }
 
+// ============ 批量导入 ============
+
+/// 批量导入凭据请求（来自 Kiro 账户管理工具导出的格式）
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchImportRequest {
+    /// 导出版本
+    #[serde(default)]
+    pub version: Option<String>,
+
+    /// 导出时间戳
+    #[serde(default)]
+    pub exported_at: Option<u64>,
+
+    /// 账户列表
+    pub accounts: Vec<ImportAccount>,
+
+    /// 分组（可选）
+    #[serde(default)]
+    pub groups: Vec<serde_json::Value>,
+
+    /// 标签（可选）
+    #[serde(default)]
+    pub tags: Vec<serde_json::Value>,
+}
+
+/// 导入的账户信息
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportAccount {
+    /// 邮箱
+    #[serde(default)]
+    pub email: Option<String>,
+
+    /// 用户 ID
+    #[serde(default)]
+    pub user_id: Option<String>,
+
+    /// 昵称
+    #[serde(default)]
+    pub nickname: Option<String>,
+
+    /// 身份提供者 (Google, Github, BuilderId)
+    #[serde(default)]
+    pub idp: Option<String>,
+
+    /// 凭据信息
+    pub credentials: ImportCredentials,
+
+    /// 订阅信息（可选）
+    #[serde(default)]
+    pub subscription: Option<serde_json::Value>,
+
+    /// 使用量信息（可选）
+    #[serde(default)]
+    pub usage: Option<serde_json::Value>,
+
+    /// 标签
+    #[serde(default)]
+    pub tags: Vec<String>,
+
+    /// 状态
+    #[serde(default)]
+    pub status: Option<String>,
+}
+
+/// 导入的凭据详情
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportCredentials {
+    /// 访问令牌
+    #[serde(default)]
+    pub access_token: Option<String>,
+
+    /// CSRF Token
+    #[serde(default)]
+    pub csrf_token: Option<String>,
+
+    /// 刷新令牌（必需）
+    pub refresh_token: Option<String>,
+
+    /// OIDC Client ID
+    #[serde(default)]
+    pub client_id: Option<String>,
+
+    /// OIDC Client Secret
+    #[serde(default)]
+    pub client_secret: Option<String>,
+
+    /// 区域
+    #[serde(default)]
+    pub region: Option<String>,
+
+    /// 过期时间戳
+    #[serde(default)]
+    pub expires_at: Option<u64>,
+
+    /// 认证方式 (social / IdC)
+    #[serde(default)]
+    pub auth_method: Option<String>,
+
+    /// 提供者 (Google, Github 等)
+    #[serde(default)]
+    pub provider: Option<String>,
+}
+
+/// 批量导入结果
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchImportResponse {
+    /// 是否成功
+    pub success: bool,
+    /// 消息
+    pub message: String,
+    /// 成功导入数量
+    pub imported_count: usize,
+    /// 跳过数量（重复或无效）
+    pub skipped_count: usize,
+    /// 失败数量
+    pub failed_count: usize,
+    /// 详细结果
+    pub results: Vec<ImportResult>,
+}
+
+/// 单个导入结果
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportResult {
+    /// 账户标识（邮箱或昵称）
+    pub identifier: String,
+    /// 是否成功
+    pub success: bool,
+    /// 消息
+    pub message: String,
+    /// 新凭据 ID（成功时）
+    pub credential_id: Option<u64>,
+}
+
 // ============ 余额查询 ============
 
 /// 余额查询响应

@@ -67,3 +67,56 @@ export interface AddCredentialResponse {
   message: string
   credentialId: number
 }
+
+// 批量导入请求
+export interface BatchImportRequest {
+  version?: string
+  exportedAt?: number
+  accounts: ImportAccount[]
+  groups?: unknown[]
+  tags?: unknown[]
+}
+
+// 导入的账户信息
+export interface ImportAccount {
+  email?: string
+  userId?: string
+  nickname?: string
+  idp?: string
+  credentials: ImportCredentials
+  subscription?: unknown
+  usage?: unknown
+  tags?: string[]
+  status?: string
+}
+
+// 导入的凭据详情
+export interface ImportCredentials {
+  accessToken?: string
+  csrfToken?: string
+  refreshToken?: string
+  clientId?: string
+  clientSecret?: string
+  region?: string
+  expiresAt?: number
+  authMethod?: string
+  provider?: string
+}
+
+// 批量导入响应
+export interface BatchImportResponse {
+  success: boolean
+  message: string
+  importedCount: number
+  skippedCount: number
+  failedCount: number
+  results: ImportResult[]
+}
+
+// 单个导入结果
+export interface ImportResult {
+  identifier: string
+  success: boolean
+  message: string
+  credentialId?: number
+}

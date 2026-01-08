@@ -8,6 +8,8 @@ import type {
   SetPriorityRequest,
   AddCredentialRequest,
   AddCredentialResponse,
+  BatchImportRequest,
+  BatchImportResponse,
 } from '@/types/api'
 
 // 创建 axios 实例
@@ -76,5 +78,13 @@ export async function addCredential(
   req: AddCredentialRequest
 ): Promise<AddCredentialResponse> {
   const { data } = await api.post<AddCredentialResponse>('/credentials', req)
+  return data
+}
+
+// 批量导入凭据
+export async function batchImportCredentials(
+  req: BatchImportRequest
+): Promise<BatchImportResponse> {
+  const { data } = await api.post<BatchImportResponse>('/credentials/batch', req)
   return data
 }
